@@ -1,0 +1,8 @@
+name: GodlyzPlugin
+version: '${project.version}'
+main: com.sorkopiko.godlyzbox.GodlyzPlugin
+api-version: '1.20'
+authors: [SorkoPiko]
+description: Plugin for Godlyzbox
+website: sorkopiko.com
+softDepend: [PlaceholderAPI]
