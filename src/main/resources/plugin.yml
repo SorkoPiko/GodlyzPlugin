@@ -5,4 +5,16 @@ api-version: '1.20'
 authors: [SorkoPiko]
 description: Plugin for Godlyzbox
 website: sorkopiko.com
+
 softDepend: [PlaceholderAPI]
+
+commands:
+  verify:
+    description: Verify your account with your Discord account
+    usage: "Usage: /verify <code>"
+    permission: godlyzbox.verify
+
+permissions:
+    godlyzbox.verify:
+        description: Verify your account with your Discord account
+        default: true

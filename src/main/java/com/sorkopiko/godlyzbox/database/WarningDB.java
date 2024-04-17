@@ -1,5 +1,7 @@
 package com.sorkopiko.godlyzbox.database;
 
+import com.sorkopiko.godlyzbox.types.Warning;
+
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;

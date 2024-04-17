@@ -13,7 +13,7 @@ public class DiscordDB {
             statement.execute("""
                             CREATE TABLE IF NOT EXISTS users (
                             discord_id NUMBER PRIMARY KEY,
-                            mc_uuid TEXT NOT NULL,
+                            mc_uuid TEXT NOT NULL
                             )
                     """);
         }

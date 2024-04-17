@@ -1,4 +1,4 @@
-package com.sorkopiko.godlyzbox.database;
+package com.sorkopiko.godlyzbox.types;
 
 public class LinkedPlayer {
     private long discordID;
