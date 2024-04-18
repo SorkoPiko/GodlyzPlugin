@@ -31,6 +31,7 @@ public final class GodlyzPlugin extends JavaPlugin {
         // Plugin startup logic
         FileConfiguration config = getConfig();
         config.addDefault("bot.enabled", true);
+        config.addDefault("bot.staffRole", "YOUR_STAFF_ROLE_ID");
         config.addDefault("bot.token", "YOUR_BOT_TOKEN");
         config.options().copyDefaults(true);
         saveConfig();

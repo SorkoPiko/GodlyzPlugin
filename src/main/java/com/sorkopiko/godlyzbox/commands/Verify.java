@@ -98,18 +98,17 @@ public class Verify extends ListenerAdapter implements CommandExecutor {
         }
 
         if (args[0].equalsIgnoreCase(verificationCodes.get(player.getUniqueId()))){
-            api.retrieveUserById(pendingVerifications.get(player.getUniqueId())).queue(discordUser -> {
-                try {
-                    discordDB.addUser(player.getUniqueId(), pendingVerifications.get(player.getUniqueId()));
-                    player.sendMessage(ChatColor.GREEN + "You have successfully verified your account " + discordUser.getName() + "!");
-                    verificationCodes.remove(player.getUniqueId());
-                    pendingVerifications.remove(player.getUniqueId());
-                } catch (Exception e) {
-                    plugin.getLogger().severe("An error occurred while verifying!");
-                    e.printStackTrace();
-                    player.sendMessage(ChatColor.RED + "An error occurred while verifying your account!");
-                }
-            });
+            try {
+                User discordUser = api.retrieveUserById(pendingVerifications.get(player.getUniqueId())).complete();
+                discordDB.addUser(player.getUniqueId(), pendingVerifications.get(player.getUniqueId()));
+                player.sendMessage(ChatColor.GREEN + "You have successfully verified your account " + discordUser.getName() + "!");
+                verificationCodes.remove(player.getUniqueId());
+                pendingVerifications.remove(player.getUniqueId());
+            } catch (Exception e) {
+                plugin.getLogger().severe("An error occurred while verifying!");
+                e.printStackTrace();
+                player.sendMessage(ChatColor.RED + "An error occurred while verifying your account!");
+            }
         } else {
             player.sendMessage(ChatColor.RED + "Invalid verification code!");
         }
