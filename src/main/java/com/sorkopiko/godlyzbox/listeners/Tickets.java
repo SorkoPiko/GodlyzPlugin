@@ -23,6 +23,7 @@ import net.milkbowl.vault.chat.Chat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.jetbrains.annotations.NotNull;
 
@@ -259,14 +260,21 @@ public class Tickets extends ListenerAdapter {
 
         User user = this.luckPerms.getUserManager().getUser(player.getUniqueId());
 
+        Player online = player.getPlayer();
+
         serverInfo.setTitle("Server Information");
+        serverInfo.addField("Rank", user.getPrimaryGroup(), false);
+        serverInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
+        serverInfo.setColor(0x0000ff);
+
+        if (online == null) {
+            serverInfo.setDescription("Player is offline, so some data is unavailable!");
+            return serverInfo;
+        }
         serverInfo.addField("Playtime", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_playtime% (#%ajlb_position_godlyzbox_playtime_alltime%)"), false);
         serverInfo.addField("Blocks Mined", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_blocks% (#%ajlb_position_godlyzbox_blocks_alltime%)"), false);
         serverInfo.addField("Kills", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_kills% (#%ajlb_position_godlyzbox_kills_alltime%)"), false);
         serverInfo.addField("Deaths", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_deaths%"), false);
-        serverInfo.addField("Rank", user.getPrimaryGroup(), false);
-        serverInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
-        serverInfo.setColor(0x0000ff);
 
         return serverInfo;
     }
