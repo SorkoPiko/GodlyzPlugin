@@ -2,6 +2,9 @@ package com.sorkopiko.godlyzbox.listeners;
 
 import com.sorkopiko.godlyzbox.GodlyzPlugin;
 import com.sorkopiko.godlyzbox.database.DiscordDB;
+import com.sorkopiko.godlyzbox.database.WarningDB;
+import com.sorkopiko.godlyzbox.types.Warning;
+import me.clip.placeholderapi.PlaceholderAPI;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
@@ -14,26 +17,40 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.requests.restaction.ChannelAction;
+import net.milkbowl.vault.chat.Chat;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.plugin.RegisteredServiceProvider;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.EnumSet;
-import java.util.List;
-import java.util.UUID;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
+import java.util.*;
 
 public class Tickets extends ListenerAdapter {
-    private final JDA api;
+    private final JDA jda;
     private final GodlyzPlugin plugin;
     private final DiscordDB discordDB;
+    private final WarningDB warningDB;
+    private final Chat chat;
 
     public Tickets(GodlyzPlugin plugin) {
         this.plugin = plugin;
         this.discordDB = this.plugin.getDiscordDB();
-        this.api = plugin.getJDA();
-        if (this.api == null) {
+        this.warningDB = this.plugin.getWarningDB();
+        this.jda = plugin.getJDA();
+        RegisteredServiceProvider<Chat> rsp = Bukkit.getServer().getServicesManager().getRegistration(Chat.class);
+        if (rsp != null) {
+            chat = rsp.getProvider();
+        } else {
+            this.plugin.getLogger().severe("Vault not found! Please make sure Vault is installed!");
+            chat = null;
+        }
+        if (this.jda == null) {
             return;
         }
-        this.api.addEventListener(this);
+        this.jda.addEventListener(this);
     }
 
     @Override
@@ -42,22 +59,22 @@ public class Tickets extends ListenerAdapter {
         String channelTopic;
         InteractionHook hook;
         if (event.getComponentId().equals("general-ticket")) {
-            hook = event.reply("Creating a ticket...").setEphemeral(true).complete();
+            hook = event.deferReply().setEphemeral(true).complete();
             categoryName = "General Tickets";
             channelTopic = "General Ticket";
         }
         else if (event.getComponentId().equals("staff-application")) {
-            hook = event.reply("Creating a staff application...").setEphemeral(true).complete();
+            hook = event.deferReply().setEphemeral(true).complete();
             categoryName = "Staff Applications";
             channelTopic = "Staff Application";
         }
         else if (event.getComponentId().equals("bug-report")) {
-            hook = event.reply("Creating a bug report...").setEphemeral(true).complete();
+            hook = event.deferReply().setEphemeral(true).complete();
             categoryName = "Bug Reports";
             channelTopic = "Bug Report";
         }
         else if (event.getComponentId().equals("close-ticket")) {
-            event.getChannel().sendMessage("Are you sure you want to close the ticket?")
+            event.reply("Are you sure you want to close the ticket?")
                     .addActionRow(
                             Button.success("confirm-close", "Yes"),
                             Button.danger("cancel-close", "No")
@@ -72,40 +89,23 @@ public class Tickets extends ListenerAdapter {
             event.getMessage().delete().queue();
             return;
         }
+        else if (event.getComponentId().equals("refresh-info")) {
+            hook = event.deferReply().setEphemeral(true).complete();
+            try {
+                OfflinePlayer player = this.plugin.getServer().getOfflinePlayer(discordDB.getLinkedMC(Long.parseLong(event.getChannel().getName().substring(2))));
+                event.getMessage().editMessage("").queue();
+                event.getMessage().editMessageEmbeds(playerInfoEmbed(player).build(), playerWarnEmbed(player).build(), serverInfoEmbed(player).build()).queue();
+            } catch (Exception e) {
+                e.printStackTrace();
+                hook.editOriginal("An error occurred while refreshing!").queue();
+                return;
+            }
+            hook.editOriginal("Refreshed!").queue();
+            return;
+        }
         else {
             return;
         }
-
-        OfflinePlayer player;
-        try {
-            player = this.plugin.getServer().getOfflinePlayer(discordDB.getLinkedMC(event.getUser().getIdLong()));
-        } catch (Exception e) {
-            hook.editOriginal("You must verify your account to create a ticket!").queue();
-            return;
-        }
-
-        List<Category> categories = event.getGuild().getCategoriesByName(categoryName, true);
-        Category category;
-        if (!categories.isEmpty()) {
-            category = categories.get(0);
-        } else {
-            EnumSet<Permission> permissions = EnumSet.of(Permission.VIEW_CHANNEL);
-            ChannelAction<Category> categoryAction = event.getGuild().createCategory(categoryName).addPermissionOverride(event.getGuild().getPublicRole(), null, permissions);
-            category = categoryAction.complete();
-        }
-        List<GuildChannel> channels = category.getChannels();
-        // check if the channel already exists
-        for (GuildChannel channel : channels) {
-            if (channel.getName().equals("t-" + event.getUser().getId())) {
-                hook.editOriginal("You already have a ticket!").queue();
-                return;
-            }
-        }
-        EnumSet<Permission> permissions = EnumSet.of(Permission.VIEW_CHANNEL);
-        TextChannel channel = event.getGuild().createTextChannel("t-" + event.getUser().getId())
-                .setParent(category)
-                .setTopic(channelTopic)
-                .addPermissionOverride(event.getMember(), null, permissions).complete();
 
         String staffRoleString = plugin.getConfig().getString("bot.staffRole");
         Role staffRole;
@@ -120,9 +120,41 @@ public class Tickets extends ListenerAdapter {
         if (staffRole != null) {
             staffRoleMention = staffRole.getAsMention();
         } else {
-            staffRoleMention = "Staff";
             plugin.getLogger().severe("Staff role not found! Please set the staff role ID in the config.yml file!");
+            hook.editOriginal("An error occurred while creating the ticket!").queue();
+            return;
         }
+
+        EnumSet<Permission> permissions = EnumSet.of(Permission.VIEW_CHANNEL);
+
+        OfflinePlayer player;
+        try {
+            player = this.plugin.getServer().getOfflinePlayer(discordDB.getLinkedMC(event.getUser().getIdLong()));
+        } catch (Exception e) {
+            hook.editOriginal("You must verify your account to create a ticket!").queue();
+            return;
+        }
+
+        List<Category> categories = event.getGuild().getCategoriesByName(categoryName, true);
+        Category category;
+        if (!categories.isEmpty()) {
+            category = categories.get(0);
+        } else {
+            category = event.getGuild().createCategory(categoryName).addPermissionOverride(event.getGuild().getPublicRole(), null, permissions).addPermissionOverride(staffRole, permissions, null).complete();
+        }
+        List<GuildChannel> channels = category.getChannels();
+        // check if the channel already exists
+        for (GuildChannel channel : channels) {
+            if (channel.getName().equals("t-" + event.getUser().getId())) {
+                hook.editOriginal("You already have a ticket!").queue();
+                return;
+            }
+        }
+        TextChannel channel = event.getGuild().createTextChannel("t-" + event.getUser().getId())
+                .setParent(category)
+                .setTopic(channelTopic)
+                .syncPermissionOverrides()
+                .addPermissionOverride(event.getMember(), permissions, null).complete();
 
         EmbedBuilder embed = new EmbedBuilder();
 
@@ -131,22 +163,100 @@ public class Tickets extends ListenerAdapter {
         embed.setColor(0x00ff00);
         embed.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
 
-        EmbedBuilder playerInfo = new EmbedBuilder();
+        EmbedBuilder playerInfo = playerInfoEmbed(player);
+        EmbedBuilder playerWarn = playerWarnEmbed(player);
+        EmbedBuilder serverInfo = serverInfoEmbed(player);
 
-        playerInfo.setTitle("Player Information");
-        playerInfo.addField("Username", player.getName(), true);
-        playerInfo.addField("UUID", player.getUniqueId().toString(), true);
-        playerInfo.addField("First Join", "<t:" + Math.round(player.getFirstPlayed()/1000) + ":f> (<t:" + Math.round(player.getFirstPlayed()/1000) + ":R>", true);
-        playerInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
-        playerInfo.setColor(0xffff00);
+        channel.sendMessage("")
+                .setEmbeds(playerInfo.build(), playerWarn.build(), serverInfo.build())
+                .setActionRow(
+                        Button.primary("refresh-info", "\uD83D\uDD04 Refresh")
+                ).queue();
 
         channel.sendMessage(staffRoleMention + ", " + event.getUser().getAsMention())
-                .setEmbeds(embed.build(), playerInfo.build())
+                .setEmbeds(embed.build())
                 .setActionRow(
                         Button.danger("close-ticket", "\uD83D\uDD12 Close ticket")
                 ).queue();
 
         hook.editOriginal("✅ Ticket created: " + channel.getAsMention()).queue();
+    }
+
+    private @NotNull EmbedBuilder playerInfoEmbed(OfflinePlayer player) {
+        EmbedBuilder playerInfo = new EmbedBuilder();
+
+        playerInfo.setTitle("Player Information");
+        playerInfo.setThumbnail("https://mc-heads.net/avatar/" + player.getUniqueId());
+        playerInfo.addField("Username", player.getName(), false);
+        playerInfo.addField("UUID", "`" + player.getUniqueId() + "`", false);
+        playerInfo.addField("First Join", "<t:" + player.getFirstPlayed() /1000 + ":f> (<t:" + player.getFirstPlayed()/1000 + ":R>)", false);
+        playerInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
+        playerInfo.setColor(0xffff00);
+        return playerInfo;
+    }
+
+    private @NotNull EmbedBuilder playerWarnEmbed(OfflinePlayer player) {
+        EmbedBuilder playerWarn = new EmbedBuilder();
+        List<Warning> warnings;
+        StringBuilder description = new StringBuilder();
+        Integer total = 0;
+        Integer warns = 0;
+        Integer unwarns = 0;
+
+        playerWarn.setTitle("Player Warnings");
+        playerWarn.setColor(0xff0000);
+        playerWarn.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
+
+        try {
+            warnings = this.warningDB.warnList(player.getUniqueId());
+        } catch (SQLException e) {
+            this.plugin.getLogger().severe("An error occurred while fetching the player's warnings!");
+            e.printStackTrace();
+            return playerWarn;
+        }
+        if (warnings.isEmpty()) {
+            playerWarn.setDescription("No warnings found!");
+            return playerWarn;
+        }
+
+        for (Warning warning : warnings) {
+            total += warning.type.equals("+") ? 1 : -1;
+            if (warning.type.equals("+")) {
+                warns++;
+            } else {
+                unwarns++;
+            }
+            String warner;
+            try {
+                warner = this.plugin.getServer().getOfflinePlayer(UUID.fromString(warning.warner)).getName();
+            } catch (IllegalArgumentException   e) {
+                if (warning.warner.equals("CONSOLE") || warning.warner.equals("VULCAN")) {
+                    warner = warning.warner;
+                } else {
+                    this.plugin.getLogger().severe("Could not parse warner '" + warning.warner + "' as UUID!");
+                    warner = "Unknown";
+                }
+            }
+            description.append(" **").append(warning.type).append("**1 (Total: ").append(total).append(") - ").append(warning.reason).append(" **FROM** ").append(warner).append(" (<t:").append(warning.timestamp.toEpochSecond(ZoneOffset.UTC)).append(":R>) `").append(warning.id).append("`\n");
+        }
+
+        playerWarn.setDescription("**Warn History**\n" + description + "---------------------------------------\nCurrent Warns: **" + total + "** (Total Warns: **" + warns + "** | Total Unwarns: **" + unwarns + "**)");
+        return playerWarn;
+    }
+
+    private @NotNull EmbedBuilder serverInfoEmbed(OfflinePlayer player) {
+        EmbedBuilder serverInfo = new EmbedBuilder();
+
+        serverInfo.setTitle("Server Information");
+        serverInfo.addField("Playtime", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_playtime% (#%ajlb_position_godlyzbox_playtime_alltime%)"), false);
+        serverInfo.addField("Blocks Mined", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_blocks% (#%ajlb_position_godlyzbox_blocks_alltime%)"), false);
+        serverInfo.addField("Kills", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_kills% (#%ajlb_position_godlyzbox_kills_alltime%)"), false);
+        serverInfo.addField("Deaths", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_deaths%"), false);
+        serverInfo.addField("Rank", ChatColor.stripColor(this.chat.getPlayerPrefix(null, player)), false);
+        serverInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
+        serverInfo.setColor(0x0000ff);
+
+        return serverInfo;
     }
 
     @Override

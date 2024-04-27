@@ -6,7 +6,7 @@
 
   <groupId>com.sorkopiko</groupId>
   <artifactId>Godlyzbox</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <packaging>jar</packaging>
 
   <name>GodlyzPlugin</name>
@@ -104,6 +104,10 @@
           <id>placeholderapi</id>
           <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
       </repository>
+      <repository>
+          <id>jitpack.io</id>
+          <url>https://jitpack.io</url>
+      </repository>
   </repositories>
 
   <dependencies>
@@ -135,6 +139,24 @@
                   <artifactId>opus-java</artifactId>
               </exclusion>
           </exclusions>
+      </dependency>
+      <dependency>
+          <groupId>me.frep.vulcan.api</groupId>
+          <artifactId>VulcanAPI</artifactId>
+          <version>1.0</version>
+          <scope>system</scope>
+          <systemPath>${project.basedir}/bin/VulcanAPI.jar</systemPath>
+      </dependency>
+      <dependency>
+          <groupId>com.github.MilkBowl</groupId>
+          <artifactId>VaultAPI</artifactId>
+          <version>1.7</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>com.github.SparklingComet</groupId>
+          <artifactId>java-mojang-api</artifactId>
+          <version>-SNAPSHOT</version>
       </dependency>
   </dependencies>
 </project>
