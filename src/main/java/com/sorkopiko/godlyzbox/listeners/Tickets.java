@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 public class Tickets extends ListenerAdapter {
     private final JDA jda;
@@ -258,14 +259,14 @@ public class Tickets extends ListenerAdapter {
     private @NotNull EmbedBuilder serverInfoEmbed(OfflinePlayer player) {
         EmbedBuilder serverInfo = new EmbedBuilder();
 
-        User user = this.luckPerms.getUserManager().getUser(player.getUniqueId());
-
-        Player online = player.getPlayer();
+        User user = getOfflinePlayerData(player.getUniqueId());
 
         serverInfo.setTitle("Server Information");
         serverInfo.addField("Rank", user.getPrimaryGroup(), false);
         serverInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
         serverInfo.setColor(0x0000ff);
+
+        Player online = player.getPlayer();
 
         if (online == null) {
             serverInfo.setDescription("Player is offline, so some data is unavailable!");
@@ -313,5 +314,12 @@ public class Tickets extends ListenerAdapter {
 
             event.getChannel().sendMessage("⚠️ **THE SERVER MUST BE RUNNING TO CREATE A TICKET** ⚠️").queue();
         }
+    }
+
+    @NotNull
+    public User getOfflinePlayerData(UUID playerUUID) {
+        CompletableFuture<User> userFuture = luckPerms.getUserManager().loadUser(playerUUID);
+        User user = userFuture.join();
+        return user;
     }
 }
