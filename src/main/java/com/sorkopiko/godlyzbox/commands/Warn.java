@@ -64,7 +64,10 @@ public class Warn implements CommandExecutor {
             warningDB.addWarning(uuid, reason, warner, type);
             if (Objects.equals(type, "-")) {
                 if (onlinePlayer != null) {
-                    onlinePlayer.sendMessage(ChatColor.RED + ChatColor.BOLD.toString() + "You have been unwarned: " + ChatColor.GREEN + reason + "\n" + ChatColor.YELLOW + "You now have " + ChatColor.BLUE + warningDB.getWarningCount(uuid) + ChatColor.YELLOW + " warnings!");
+                    onlinePlayer.sendMessage(this.plugin.getConfig().getString("messages.unwarn")
+                            .replace("{reason}", reason)
+                            .replace("{count}", String.valueOf(warningDB.getWarningCount(uuid)))
+                            .replace("{warner}", warner));
                 }
                 return;
             }
@@ -80,7 +83,10 @@ public class Warn implements CommandExecutor {
                 }
             }
             if (onlinePlayer != null) {
-                onlinePlayer.sendMessage(ChatColor.RED + ChatColor.BOLD.toString() + "You have been warned: " + ChatColor.GREEN + reason + "\n" + ChatColor.YELLOW + "You now have " + ChatColor.BLUE + warningDB.getWarningCount(uuid) + ChatColor.YELLOW + " warnings!");
+                onlinePlayer.sendMessage(this.plugin.getConfig().getString("messages.warn")
+                        .replace("{reason}", reason)
+                        .replace("{count}", String.valueOf(warningDB.getWarningCount(uuid)))
+                        .replace("{warner}", warner));
             }
         } catch (SQLException e) {
             e.printStackTrace();
