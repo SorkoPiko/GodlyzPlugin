@@ -71,11 +71,15 @@ public class Warn implements CommandExecutor {
                 }
                 return;
             }
+            String name = plugin.getServer().getOfflinePlayer(uuid).getName();
             List<String> execute = WarningDB.checkPunishments(plugin, warningDB, uuid);
             if (execute != null) {
                 for (String executeCommand : execute) {
                     try {
-                        plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), executeCommand);
+                        plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), executeCommand
+                                .replace("{player}", name)
+                                .replace("{reason}", reason)
+                                .replace("{count}", warningDB.getWarningCount(uuid).toString()));
                     } catch (Exception e) {
                         e.printStackTrace();
                         plugin.getLogger().severe("An error occurred while executing the punishment command: '" + executeCommand + "'!");
