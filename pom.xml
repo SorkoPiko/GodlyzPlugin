@@ -6,7 +6,7 @@
 
   <groupId>com.sorkopiko</groupId>
   <artifactId>Godlyzbox</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <packaging>jar</packaging>
 
   <name>GodlyzPlugin</name>
@@ -105,6 +105,10 @@
           <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
       </repository>
       <repository>
+          <id>mavencentral</id>
+            <url>https://repo1.maven.org/maven2/</url>
+      </repository>
+      <repository>
           <id>jitpack.io</id>
           <url>https://jitpack.io</url>
       </repository>
@@ -156,7 +160,13 @@
       <dependency>
           <groupId>com.github.SparklingComet</groupId>
           <artifactId>java-mojang-api</artifactId>
-          <version>-SNAPSHOT</version>
+          <version>592fabf3e2</version>
+      </dependency>
+      <dependency>
+          <groupId>net.luckperms</groupId>
+          <artifactId>api</artifactId>
+          <version>5.4</version>
+          <scope>provided</scope>
       </dependency>
   </dependencies>
 </project>

@@ -92,7 +92,7 @@ public class WarningDB {
         String path = "punishments." + warningDB.getWarningCount(playerUUID) + ".commands";
 
         if (plugin.getConfig().contains(path)) {
-            punishment = plugin.getConfig().getStringList(path);
+            punishment.addAll(plugin.getConfig().getStringList(path));
         }
 
         return punishment;

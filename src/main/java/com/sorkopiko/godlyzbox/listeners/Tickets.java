@@ -17,6 +17,8 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.model.user.User;
 import net.milkbowl.vault.chat.Chat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -34,18 +36,26 @@ public class Tickets extends ListenerAdapter {
     private final DiscordDB discordDB;
     private final WarningDB warningDB;
     private final Chat chat;
+    private final LuckPerms luckPerms;
 
     public Tickets(GodlyzPlugin plugin) {
         this.plugin = plugin;
         this.discordDB = this.plugin.getDiscordDB();
         this.warningDB = this.plugin.getWarningDB();
         this.jda = plugin.getJDA();
+        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
         RegisteredServiceProvider<Chat> rsp = Bukkit.getServer().getServicesManager().getRegistration(Chat.class);
         if (rsp != null) {
             chat = rsp.getProvider();
         } else {
             this.plugin.getLogger().severe("Vault not found! Please make sure Vault is installed!");
             chat = null;
+        }
+        if (provider != null) {
+            luckPerms = provider.getProvider();
+        } else {
+            this.plugin.getLogger().severe("LuckPerms not found! Please make sure LuckPerms is installed!");
+            luckPerms = null;
         }
         if (this.jda == null) {
             return;
@@ -247,12 +257,14 @@ public class Tickets extends ListenerAdapter {
     private @NotNull EmbedBuilder serverInfoEmbed(OfflinePlayer player) {
         EmbedBuilder serverInfo = new EmbedBuilder();
 
+        User user = this.luckPerms.getUserManager().getUser(player.getUniqueId());
+
         serverInfo.setTitle("Server Information");
         serverInfo.addField("Playtime", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_playtime% (#%ajlb_position_godlyzbox_playtime_alltime%)"), false);
         serverInfo.addField("Blocks Mined", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_blocks% (#%ajlb_position_godlyzbox_blocks_alltime%)"), false);
         serverInfo.addField("Kills", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_kills% (#%ajlb_position_godlyzbox_kills_alltime%)"), false);
         serverInfo.addField("Deaths", PlaceholderAPI.setPlaceholders(player, "%godlyzbox_deaths%"), false);
-        serverInfo.addField("Rank", ChatColor.stripColor(this.chat.getPlayerPrefix(null, player)), false);
+        serverInfo.addField("Rank", user.getPrimaryGroup(), false);
         serverInfo.setFooter("SorkoPiko", "https://cdn.discordapp.com/avatars/609544328737456149/be44b3b9d13b875a42c9ddc1aa503fcf.png?size=4096");
         serverInfo.setColor(0x0000ff);
 

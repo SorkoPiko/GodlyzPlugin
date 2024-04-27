@@ -75,15 +75,21 @@ public class Warn implements CommandExecutor {
             List<String> execute = WarningDB.checkPunishments(plugin, warningDB, uuid);
             if (execute != null) {
                 for (String executeCommand : execute) {
-                    try {
-                        plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), executeCommand
-                                .replace("{player}", name)
-                                .replace("{reason}", reason)
-                                .replace("{count}", warningDB.getWarningCount(uuid).toString()));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        plugin.getLogger().severe("An error occurred while executing the punishment command: '" + executeCommand + "'!");
-                    }
+                    final String finalExecuteCommand = executeCommand;
+                    final String finalReason = reason;
+                    final UUID finalUuid = uuid;
+
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        try {
+                            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), finalExecuteCommand
+                                    .replace("{player}", name)
+                                    .replace("{reason}", finalReason)
+                                    .replace("{count}", warningDB.getWarningCount(finalUuid).toString()));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            plugin.getLogger().severe("An error occurred while executing the punishment command: '" + finalExecuteCommand + "'!");
+                        }
+                    });
                 }
             }
             if (onlinePlayer != null) {
